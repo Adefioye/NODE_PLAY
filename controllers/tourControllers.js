@@ -7,6 +7,16 @@ const tours = JSON.parse(
   )
 );
 
+exports.checkID = (req, res, next, val) => {
+  if (Number(val) > tours.length - 1) {
+    return res.status(404).json({
+      status: 'Fail',
+      message: `No tour with ID: ${val}`,
+    });
+  }
+  next();
+};
+
 exports.getAllTours = (req, res) => {
   res.status(200).json({
     status: 'Success',
@@ -21,13 +31,6 @@ exports.getTour = (req, res) => {
   const { id } = req.params;
 
   const tour = tours.find((tour) => tour.id === Number(id));
-
-  if (!tour) {
-    return res.status(404).json({
-      status: 'Fail',
-      message: `No tour with ID: ${id}`,
-    });
-  }
 
   res.status(200).json({
     status: 'Success',
@@ -65,13 +68,6 @@ exports.createTour = (req, res) => {
 exports.updateTour = (req, res) => {
   const { id } = req.params;
 
-  if (Number(id) > tours.length - 1) {
-    return res.status(404).json({
-      status: 'Fail',
-      message: `No tour with ID: ${id}`,
-    });
-  }
-
   const updatedTours = tours.map((tour) => {
     if (tour.id === Number(id)) {
       return { ...tour, duration: 100 };
@@ -94,15 +90,6 @@ exports.updateTour = (req, res) => {
 };
 
 exports.deleteTour = (req, res) => {
-  const { id } = req.params;
-
-  if (Number(id) > tours.length - 1) {
-    return res.status(404).json({
-      status: 'Fail',
-      message: `No tour with the ID: ${id}`,
-    });
-  }
-
   res.status(204).json({
     status: 'Success',
     data: null,
