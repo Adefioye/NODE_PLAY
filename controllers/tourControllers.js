@@ -30,6 +30,7 @@ exports.getAllTours = async (req, res) => {
     // Send response
     res.status(200).json({
       status: "Success",
+      result: tours.length,
       data: {
         tours,
       },
@@ -139,9 +140,9 @@ exports.getAllStats = async (req, res) => {
       {
         $sort: { avgPrice: 1 },
       },
-      {
-        $match: { _id: { $ne: "EASY" } },
-      },
+      // {
+      //   $match: { _id: { $ne: "EASY" } },
+      // },
     ]);
 
     res.status(200).json({
