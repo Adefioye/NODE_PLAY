@@ -17,7 +17,7 @@ router.route("/login").post(login);
 
 router
   .route("/")
-  .get(auth, getAllUsers)
+  .get(getAllUsers)
   .post(createUser);
 
 router

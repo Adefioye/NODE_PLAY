@@ -18,6 +18,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
     password: req.body.password,
     confirmPassword: req.body.confirmPassword,
     passwordChangedAt: req.body.passwordChangedAt,
+    role: req.body.role,
   });
 
   const token = signToken(newUser._id);
@@ -74,7 +75,6 @@ exports.auth = catchAsync(async (req, res, next) => {
 
   // Verify token
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
-  console.log(decoded);
 
   // Confirm the user with the token exist
   const currentUser = await User.findById(decoded.id);
@@ -94,5 +94,23 @@ exports.auth = catchAsync(async (req, res, next) => {
     );
   }
 
+  // Grant access to protected routes
+  req.user = currentUser;
+
   next();
 });
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError(
+          "You do not have the permission to perform delete operation",
+          403
+        )
+      );
+    }
+
+    next();
+  };
+};
