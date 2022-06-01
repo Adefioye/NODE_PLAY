@@ -9,6 +9,7 @@ const {
   forgotPassword,
   resetPassword,
   updateMe,
+  deleteMe,
 } = require("./../controllers/userControllers");
 const {
   signUp,
@@ -30,6 +31,8 @@ router.route("/resetPassword/:token").patch(resetPassword);
 router.route("/updatePassword").patch(auth, updatePassword);
 
 router.route("/updateMe").patch(auth, updateMe);
+
+router.route("/deleteMe").delete(auth, deleteMe);
 
 router
   .route("/")
