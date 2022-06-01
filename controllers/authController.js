@@ -11,6 +11,18 @@ const signToken = (id) => {
   });
 };
 
+const createAndSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+
+  res.status(200).json({
+    status: "Success",
+    token,
+    data: {
+      user,
+    },
+  });
+};
+
 exports.signUp = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
     name: req.body.name,
@@ -21,26 +33,18 @@ exports.signUp = catchAsync(async (req, res, next) => {
     role: req.body.role,
   });
 
-  const token = signToken(newUser._id);
-
-  res.status(201).json({
-    status: "Success",
-    data: {
-      token,
-      user: newUser,
-    },
-  });
+  createAndSendToken(newUser, 201, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
-  // Check for email and password
+  // 1) Check for email and password
   const { email, password } = req.body;
 
   if (!email || !password) {
     return next(new AppError("Please provide email and password", 400));
   }
 
-  // Check if user and password exist
+  // 2) Check if user and password exist
   const user = await User.findOne({ email }).select("+password");
 
   if (!user || !(await user.correctPassword(password, user.password))) {
@@ -49,16 +53,12 @@ exports.login = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Send the response with token
-  const token = signToken(user._id);
-  res.status(201).json({
-    status: "Success",
-    token,
-  });
+  // 3) Send the response with token
+  createAndSendToken(user, 200, res);
 });
 
 exports.auth = catchAsync(async (req, res, next) => {
-  // Get the token and Check if it is there
+  // 1) Get the token and Check if it is there
   let token;
   if (
     req.headers.authorization &&
@@ -73,16 +73,16 @@ exports.auth = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Verify token
+  // 2) Verify token
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-  // Confirm the user with the token exist
+  // 3) Confirm the user with the token exist
   const currentUser = await User.findById(decoded.id);
   if (!currentUser) {
     return next(new AppError("User with the token no longer exist", 401));
   }
 
-  // Confirm if user has not changed password after token has being issued
+  // 4) Confirm if user has not changed password after token has being issued
   const isPasswordChangedAfter = currentUser.changePasswordAfter(decoded.iat);
 
   if (isPasswordChangedAfter) {
@@ -94,7 +94,7 @@ exports.auth = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Grant access to protected routes
+  // 5) Grant access to protected routes
   req.user = currentUser;
 
   next();
@@ -115,4 +115,31 @@ exports.restrictTo = (...roles) => {
   };
 };
 
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  // 1) Get user from the collection
 
+  const user = await User.findById(req.user._id).select("+password");
+
+  // 2) Check that POSTed password is correct
+  const isPasswordCorrect = await user.correctPassword(
+    req.body.oldPassword,
+    user.password
+  );
+
+
+  if (!isPasswordCorrect)
+    return next(
+      new AppError(
+        "Old password not correct. Please provide a correct one!",
+        401
+      )
+    );
+
+  // 3) Update the password
+  user.password = req.body.password;
+  user.confirmPassword = req.body.confirmPassword;
+  await user.save();
+
+  // 4) Log in the user and send JWT
+  createAndSendToken(user, 200, res);
+});

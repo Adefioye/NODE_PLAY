@@ -24,6 +24,15 @@ exports.getAllUsers = catchAsync(async (req, res) => {
   });
 });
 
+const filterObj = (Obj, ...allowedFields) => {
+  const newObj = {};
+  Object.keys(Obj).forEach((item) => {
+    if (allowedFields.includes(item)) newObj[item] = Obj[item];
+  });
+
+  return newObj;
+};
+
 exports.createUser = (req, res) => {
   res.status(500).json({
     status: "Error",
@@ -37,6 +46,33 @@ exports.getUser = (req, res) => {
     message: "This route is not yet defined",
   });
 };
+
+exports.updateMe = catchAsync(async (req, res, next) => {
+  // Dont allow password and confirmPassword update
+  if (req.body.password || req.body.confirmPassword) {
+    return next(
+      new AppError(
+        "Password not allowed to be updated via this route. Please use /updatePassword route",
+        400
+      )
+    );
+  }
+
+  // This update route only works for changing name and email
+  const filteredBody = filterObj(req.body, "name", "email");
+
+  const updatedUser = await User.findByIdAndUpdate(req.user._id, filteredBody, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    status: "Success",
+    data: {
+      user: updatedUser,
+    },
+  });
+});
 
 exports.updateUser = (req, res) => {
   res.status(500).json({
@@ -53,17 +89,17 @@ exports.deleteUser = (req, res) => {
 };
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {
-  // Find the user with the email
+  // 1) Find the user with the email
   const user = await User.findOne({ email: req.body.email });
   if (!user) {
     return next(new AppError("No user with this email address", 404));
   }
 
-  // Generate a random reset token
+  // 2) Generate a random reset token
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
 
-  // Send the token to user's email
+  // 3) Send the token to user's email
   const resetURL = `${req.protocol}://${req.get(
     "host"
   )}/api/v1/users/resetPassword/${resetToken}`;
@@ -96,7 +132,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 });
 
 exports.resetPassword = catchAsync(async (req, res, next) => {
-  // Get user based on token
+  // 1) Get user based on token
   const { token } = req.params;
   const hashedToken = crypto
     .createHash("sha256")
@@ -106,12 +142,12 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     passwordResetToken: hashedToken,
     passwordResetExpires: { $gt: Date.now() },
   });
-  // If token has not expired and user exists, set new password
+  // 2) If token has not expired and user exists, set new password
   if (!user) {
     return next(
       new AppError(
         "Reset token does not exist or it has expired. Forgot password again!",
-        401
+        400
       )
     );
   }
@@ -121,8 +157,8 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
   await user.save();
-  // Update passwordChangedAt for the user (! Done by a pre-save hook in the userSchema)
-  // Log the user in and send JWT
+  // 3) Update passwordChangedAt for the user (! Done by a pre-save hook in the userSchema)
+  // 4) Log the user in and send JWT
   const jwtToken = signToken(user._id);
 
   res.status(201).json({

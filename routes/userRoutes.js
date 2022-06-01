@@ -8,8 +8,14 @@ const {
   deleteUser,
   forgotPassword,
   resetPassword,
+  updateMe,
 } = require("./../controllers/userControllers");
-const { signUp, login, auth } = require("./../controllers/authController");
+const {
+  signUp,
+  login,
+  auth,
+  updatePassword,
+} = require("./../controllers/authController");
 
 const router = express.Router();
 
@@ -20,6 +26,10 @@ router.route("/login").post(login);
 router.route("/forgotPassword").patch(forgotPassword);
 
 router.route("/resetPassword/:token").patch(resetPassword);
+
+router.route("/updatePassword").patch(auth, updatePassword);
+
+router.route("/updateMe").patch(auth, updateMe);
 
 router
   .route("/")
