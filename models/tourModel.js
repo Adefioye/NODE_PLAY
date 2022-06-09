@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const slugify = require("slugify");
 
+// const User = require("./userModel");
+
 const tourSchema = new mongoose.Schema(
   {
     name: {
@@ -101,6 +103,12 @@ const tourSchema = new mongoose.Schema(
         day: Number,
       },
     ],
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     toJSON: { virtuals: true },
@@ -119,6 +127,15 @@ tourSchema.pre("save", function(next) {
   next();
 });
 
+// USE FOR PERFORMING EMBEDDING OF USER DATA INTO TOURS
+
+// tourSchema.pre("save", async function(next) {
+//   const guidePromises = this.guides.map(async (id) => await User.findById(id));
+//   this.guides = await Promise.all(guidePromises);
+//   console.log(this.guides);
+//   next();
+// });
+
 // tourSchema.pre("save", function() {
 //   console.log("Document is about to be saved");
 // });
@@ -133,6 +150,14 @@ tourSchema.pre(/^find/, function(next) {
   this.find({ secretTour: { $ne: true } });
 
   this.start = Date.now();
+  next();
+});
+
+tourSchema.pre(/^find/, function(next) {
+  this.populate({
+    path: "guides",
+    select: "-__v -passwordChangedAt",
+  });
   next();
 });
 
